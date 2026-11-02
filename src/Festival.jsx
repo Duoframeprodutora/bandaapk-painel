@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { sb, linkInscricao, plataforma, erroLegivel } from "./supabase.js";
 import { ir, toast, copiar } from "./util.js";
-import { FestivalForm } from "./Festivais.jsx";
+import { FestivalForm, periodo } from "./Festivais.jsx";
 import Hotel from "./Hotel.jsx";
+import Anotacoes from "./Anotacoes.jsx";
 
 const ST = { pendente: "Pendente", conferida: "Conferida", problema: "Com problema" };
 const PROX = { pendente: "conferida", conferida: "problema", problema: "pendente" };
@@ -35,7 +36,7 @@ export default function Festival({ id, aba, perfil }) {
   if (fest === undefined) return <div className="loading">Carregando…</div>;
   if (!fest) return <div className="card empty">Festival não encontrado. <a href="/" onClick={(e) => { e.preventDefault(); ir("/"); }}>Voltar</a></div>;
 
-  const abas = [["inscricoes", "Inscrições"], ["palco", "Palco"], ["hotel", "Hotel"], ...(gestor ? [["dados", "Dados do festival"]] : [])];
+  const abas = [["inscricoes", "Inscrições"], ["palco", "Palco"], ["hotel", "Hotel"], ["notas", "Anotações"], ...(gestor ? [["dados", "Dados do festival"]] : [])];
   const catInfo = {};
   dias.forEach((d) => d.categorias.forEach((c) => (catInfo[c.id] = { dia: d, cat: c })));
   const semDia = insc.filter((i) => !catInfo[i.categoria_id]);
@@ -47,7 +48,7 @@ export default function Festival({ id, aba, perfil }) {
       <div className="fest">
         <div className="eyebrow"><a href="/" onClick={(e) => { e.preventDefault(); ir("/"); }}>Festivais</a> · {fest.inscricoes_abertas ? "inscrições abertas" : "inscrições fechadas"}</div>
         <h1>{fest.nome}</h1>
-        <p>{[fest.cidade_datas, fest.horarios].filter(Boolean).join(" · ")}</p>
+        <p>{[fest.tipo === "show" ? "Show" : "Festival", periodo(fest), fest.cidade_datas, fest.horarios].filter(Boolean).join(" · ")}</p>
       </div>
       <div className="subtabs" role="tablist">
         {abas.map(([k, n]) => (
@@ -71,6 +72,7 @@ export default function Festival({ id, aba, perfil }) {
 
       {aba === "inscricoes" && <Inscricoes fest={fest} lista={doDia} catInfo={catInfo} todasCats={todasCats} dia={dias.find((d) => d.id === diaSel)} gestor={gestor} perfil={perfil} recarregar={carregar} />}
       {aba === "palco" && <Palco lista={doDia} catInfo={catInfo} />}
+      {aba === "notas" && <Anotacoes perfil={perfil} festivalId={id} />}
       {aba === "hotel" && <Hotel fest={fest} dias={dias} gestor={gestor} />}
       {aba === "dados" && gestor && <Dados fest={fest} dias={dias} recarregar={carregar} />}
     </section>

@@ -5,6 +5,12 @@ import Inscricao from "./Inscricao.jsx";
 import Festivais from "./Festivais.jsx";
 import Festival from "./Festival.jsx";
 import Usuarios from "./Usuarios.jsx";
+import Musicas from "./Musicas.jsx";
+import Agenda from "./Agenda.jsx";
+import Anotacoes from "./Anotacoes.jsx";
+import Equipe from "./Equipe.jsx";
+import Financeiro from "./Financeiro.jsx";
+import { periodo } from "./Festivais.jsx";
 
 const NOME_PAPEL = { master: "Master", vendas: "Vendas", musico: "Músico" };
 
@@ -43,13 +49,37 @@ function Painel() {
   return <Shell perfil={perfil} />;
 }
 
+// Menu do topo. "so" limita a seção a certos perfis.
+const MENU = [
+  { rota: "/", nome: "Festivais" },
+  { rota: "/musicas", nome: "Músicas" },
+  { rota: "/palco", nome: "Palco" },
+  { rota: "/hotel", nome: "Hotel" },
+  { rota: "/agenda", nome: "Agenda" },
+  { rota: "/anotacoes", nome: "Anotações" },
+  { rota: "/equipe", nome: "Equipe" },
+  { rota: "/financeiro", nome: "Financeiro", so: ["master"] },
+  { rota: "/usuarios", nome: "Usuários", so: ["master"] },
+];
+
 function Shell({ perfil }) {
   const path = usePath();
   const master = perfil.papel === "master";
   const rota = path.split("?")[0];
+  const menu = MENU.filter((m) => !m.so || m.so.includes(perfil.papel));
+  const ativo = rota.startsWith("/f/") ? "/" : (menu.find((m) => m.rota !== "/" && rota.startsWith(m.rota))?.rota || "/");
+
   let tela;
   if (rota.startsWith("/f/")) tela = <Festival id={rota.split("/")[2]} aba={rota.split("/")[3] || "inscricoes"} perfil={perfil} />;
-  else if (rota === "/usuarios" && master) tela = <Usuarios perfil={perfil} />;
+  else if (ativo === "/musicas") tela = <Musicas perfil={perfil} />;
+  else if (ativo === "/palco") tela = <EscolherEvento aba="palco" perfil={perfil} />;
+  else if (ativo === "/hotel") tela = <EscolherEvento aba="hotel" perfil={perfil} />;
+  else if (ativo === "/agenda") tela = <Agenda perfil={perfil} />;
+  else if (ativo === "/anotacoes") tela = <Anotacoes perfil={perfil} />;
+  else if (ativo === "/equipe") tela = <Equipe perfil={perfil} />;
+  else if (ativo === "/financeiro" && master) tela = <Financeiro perfil={perfil} />;
+  else if (ativo === "/usuarios" && master) tela = <Usuarios perfil={perfil} />;
+  else if (perfil.papel === "musico") tela = <Musicas perfil={perfil} />;
   else tela = <Festivais perfil={perfil} />;
 
   return (
@@ -59,18 +89,46 @@ function Shell({ perfil }) {
           <a className="brand" href="/" onClick={(e) => { e.preventDefault(); ir("/"); }} style={{ textDecoration: "none", color: "inherit" }}>
             Banda <span>APK</span>
           </a>
-          <nav className="tabs" aria-label="Seções">
-            <button aria-current={!rota.startsWith("/usuarios") ? "page" : undefined} onClick={() => ir("/")}>Festivais</button>
-            {master && <button aria-current={rota.startsWith("/usuarios") ? "page" : undefined} onClick={() => ir("/usuarios")}>Usuários</button>}
-          </nav>
           {master && <Sino />}
           <div className="userbox">
             <span>{perfil.nome || "Você"} · {NOME_PAPEL[perfil.papel]}</span>
             <button className="ghost btn-sm" onClick={() => sb.auth.signOut()}>Sair</button>
           </div>
+          <nav className="tabs" aria-label="Seções">
+            {menu.map((m) => (
+              <button key={m.rota} aria-current={ativo === m.rota ? "page" : undefined} onClick={() => ir(m.rota)}>{m.nome}</button>
+            ))}
+          </nav>
         </div>
       </header>
       <main className="wrap">{tela}</main>
+    </>
+  );
+}
+
+// Palco e Hotel no menu: escolhe o evento (abre o próximo por padrão) e mostra a aba dele
+function EscolherEvento({ aba, perfil }) {
+  const [lista, setLista] = useState(null);
+  const [sel, setSel] = useState(() => { try { return localStorage.getItem("evento-sel") || ""; } catch { return ""; } });
+  useEffect(() => {
+    sb.from("festivais").select("id,nome,tipo,data_inicio,data_fim,cidade_datas").order("data_inicio", { ascending: true, nullsFirst: false })
+      .then(({ data }) => setLista(data || []));
+  }, []);
+  if (lista === null) return <div className="loading">Carregando…</div>;
+  if (!lista.length) return <div className="card empty">Nenhum festival ou show cadastrado ainda.</div>;
+  const hoje = new Date().toISOString().slice(0, 10);
+  const proximo = lista.find((f) => f.data_inicio && (f.data_fim || f.data_inicio) >= hoje) || lista.find((f) => !f.data_inicio) || lista[lista.length - 1];
+  const atual = lista.find((f) => f.id === sel) || proximo;
+  function trocar(id) { setSel(id); try { localStorage.setItem("evento-sel", id); } catch {} }
+  return (
+    <>
+      <div className="toolbar" style={{ marginBottom: 0 }}>
+        <label className="hint" htmlFor="ev-sel">Evento:</label>
+        <select id="ev-sel" value={atual.id} onChange={(e) => trocar(e.target.value)} style={{ width: "auto", maxWidth: "100%" }}>
+          {lista.map((f) => <option key={f.id} value={f.id}>{f.nome} · {periodo(f)}</option>)}
+        </select>
+      </div>
+      <Festival key={atual.id} id={atual.id} aba={aba} perfil={perfil} />
     </>
   );
 }

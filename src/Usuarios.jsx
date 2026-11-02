@@ -56,7 +56,7 @@ export default function Usuarios({ perfil }) {
 
   return (
     <section>
-      <div className="fest"><div className="eyebrow">Só o Master vê esta tela</div><h1>Usuários e equipe</h1></div>
+      <div className="fest"><div className="eyebrow">Só o Master vê esta tela</div><h1>Usuários</h1></div>
 
       <form className="card sharebox" onSubmit={criar}>
         <b>Criar login</b>
@@ -105,49 +105,6 @@ export default function Usuarios({ perfil }) {
           ))}
         </ul>
       )}
-      <Equipe />
     </section>
-  );
-}
-
-// Lista de pessoas que viajam (para a divisão de quartos). Não precisam de login.
-function Equipe() {
-  const [lista, setLista] = useState([]);
-  const [n, setN] = useState({ nome: "", funcao: "", tecnica: false });
-  const carregar = () => sb.from("equipe").select("*").order("ordem").then(({ data }) => setLista(data || []));
-  useEffect(() => { carregar(); }, []);
-  async function add(e) {
-    e.preventDefault();
-    if (!n.nome.trim()) return;
-    const { error } = await sb.from("equipe").insert({ ...n, ordem: lista.length + 1 });
-    if (error) toast(erroLegivel(error)); else { setN({ nome: "", funcao: "", tecnica: false }); carregar(); }
-  }
-  async function alterar(p, campo, v) {
-    setLista(lista.map((x) => x.id === p.id ? { ...x, [campo]: v } : x));
-    await sb.from("equipe").update({ [campo]: v }).eq("id", p.id);
-  }
-  return (
-    <>
-      <h2 style={{ fontSize: 22, margin: "22px 0 6px" }}>Equipe que viaja</h2>
-      <p className="hint" style={{ marginTop: 0 }}>Usada na divisão de quartos. Marque quem é da equipe técnica (vai antes para montar a estrutura).</p>
-      <ul className="users">
-        {lista.map((p) => (
-          <li key={p.id} className="card" style={{ opacity: p.ativo ? 1 : .55 }}>
-            <div className="toolbar" style={{ margin: 0, flex: 1 }}>
-              <input type="text" value={p.nome} onChange={(e) => alterar(p, "nome", e.target.value)} aria-label="Nome" style={{ maxWidth: 160 }} />
-              <input type="text" value={p.funcao} onChange={(e) => alterar(p, "funcao", e.target.value)} aria-label="Função" style={{ maxWidth: 200 }} />
-              <label className="hint"><input type="checkbox" checked={p.tecnica} onChange={(e) => alterar(p, "tecnica", e.target.checked)} /> Equipe técnica</label>
-              <label className="hint"><input type="checkbox" checked={p.ativo} onChange={(e) => alterar(p, "ativo", e.target.checked)} /> Ativo</label>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <form className="toolbar" onSubmit={add}>
-        <input type="text" placeholder="Nome" value={n.nome} onChange={(e) => setN({ ...n, nome: e.target.value })} aria-label="Nome" style={{ maxWidth: 160 }} />
-        <input type="text" placeholder="Função" value={n.funcao} onChange={(e) => setN({ ...n, funcao: e.target.value })} aria-label="Função" style={{ maxWidth: 200 }} />
-        <label className="hint"><input type="checkbox" checked={n.tecnica} onChange={(e) => setN({ ...n, tecnica: e.target.checked })} /> Equipe técnica</label>
-        <button className="ghost">Adicionar pessoa</button>
-      </form>
-    </>
   );
 }

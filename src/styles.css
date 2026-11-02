@@ -189,3 +189,21 @@ audio{width:100%;max-width:320px;height:36px}
   .print-only-area{border:0!important;box-shadow:none;padding:0}
   .print-only-area a{color:#000}
 }
+
+input[type=date]{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}
+.tabs{overflow-x:auto;max-width:100%;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{white-space:nowrap}
+header.top .tabs{order:3;width:100%}
+.tabs button{flex-shrink:0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.kpi{padding:14px;display:grid;gap:2px}
+.kpi b{font-family:var(--display);font-stretch:85%;font-size:26px;font-variant-numeric:tabular-nums}
+.kpi.in b{color:var(--ok)}.kpi.out b{color:var(--bad)}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th,.tbl td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.tbl td.num,.tbl th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.scroll-x{overflow-x:auto}
+.mes{font-family:var(--display);font-stretch:85%;font-size:20px;margin:18px 0 8px;text-transform:capitalize}
+.nota{padding:12px 14px;display:grid;gap:4px}
+.nota small{color:var(--muted)}

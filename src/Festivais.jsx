@@ -15,18 +15,18 @@ export default function Festivais({ perfil }) {
     <section>
       <div className="fest">
         <div className="eyebrow">Painel da banda</div>
-        <h1>Festivais</h1>
+        <h1>Festivais e shows</h1>
       </div>
-      {gestor && !novo && <div className="toolbar" style={{ marginTop: 0 }}><button className="primary" onClick={() => setNovo(true)}>Cadastrar festival</button></div>}
+      {gestor && !novo && <div className="toolbar" style={{ marginTop: 0 }}><button className="primary" onClick={() => setNovo(true)}>Cadastrar evento</button></div>}
       {novo && <FestivalForm onCancelar={() => setNovo(false)} onSalvo={(id) => ir("/f/" + id)} />}
       {lista === null ? <div className="loading">Carregando…</div> :
-        lista.length === 0 ? <div className="card empty">Nenhum festival cadastrado ainda.{gestor && " Toque em Cadastrar festival e preencha com o que o organizador passou."}</div> :
+        lista.length === 0 ? <div className="card empty">Nenhum evento cadastrado ainda.{gestor && " Toque em Cadastrar evento e coloque pelo menos o nome."}</div> :
           <ul className="fests">
             {lista.map((f) => (
               <li key={f.id} className="card">
                 <a href={"/f/" + f.id} onClick={(e) => { e.preventDefault(); ir("/f/" + f.id); }}>
                   <h3>{f.nome}</h3>
-                  <span className="hint">{f.cidade_datas}</span>
+                  <span className="hint">{[f.tipo === "show" ? "Show" : "Festival", f.cidade_datas, periodo(f)].filter(Boolean).join(" · ")}</span>
                   <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <span className="pill">{f.inscricoes?.[0]?.count || 0} inscrições</span>
                     <span className={"pill " + (f.inscricoes_abertas ? "on" : "off")}>{f.inscricoes_abertas ? "Inscrições abertas" : "Inscrições fechadas"}</span>
@@ -39,6 +39,9 @@ export default function Festivais({ perfil }) {
   );
 }
 
+const fmt = (d) => d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : "";
+export const periodo = (f) => !f.data_inicio ? "data a definir" : f.data_fim && f.data_fim !== f.data_inicio ? fmt(f.data_inicio) + " a " + fmt(f.data_fim) : fmt(f.data_inicio);
+
 export const diasParaTexto = (dias) => dias.map((d) => d.nome + ": " + d.categorias.map((c) => c.nome).join(", ")).join("\n");
 const lerDias = (texto) => texto.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
   const [n, ...resto] = l.split(":");
@@ -46,10 +49,11 @@ const lerDias = (texto) => texto.split("\n").map((l) => l.trim()).filter(Boolean
 });
 
 // Cadastro e edição do festival (o Master preenche com o que o organizador passou)
-export function FestivalForm({ festival, dias = [], onCancelar, onSalvo }) {
+export function FestivalForm({ festival, dias = [], onCancelar, onSalvo, tipoInicial }) {
   const [f, setF] = useState({
     nome: festival?.nome || "", cidade_datas: festival?.cidade_datas || "", horarios: festival?.horarios || "",
     qtd_prevista: festival?.qtd_prevista || "", prazo: festival?.prazo || "", contato_ajuda: festival?.contato_ajuda || "",
+    tipo: festival?.tipo || tipoInicial || "festival", data_inicio: festival?.data_inicio || "", data_fim: festival?.data_fim || "",
   });
   const [diasTxt, setDiasTxt] = useState(dias.length ? diasParaTexto(dias) : "");
   const [erro, setErro] = useState("");
@@ -64,11 +68,12 @@ export function FestivalForm({ festival, dias = [], onCancelar, onSalvo }) {
     setBusy(true);
     try {
       let id = festival?.id;
+      const dados = { ...f, data_inicio: f.data_inicio || null, data_fim: f.data_fim || f.data_inicio || null };
       if (id) {
-        const { error } = await sb.from("festivais").update(f).eq("id", id); if (error) throw error;
+        const { error } = await sb.from("festivais").update(dados).eq("id", id); if (error) throw error;
       } else {
         const slug = slugify(f.nome) + "-" + Math.random().toString(36).slice(2, 6);
-        const { data, error } = await sb.from("festivais").insert({ ...f, slug }).select().single(); if (error) throw error;
+        const { data, error } = await sb.from("festivais").insert({ ...dados, slug }).select().single(); if (error) throw error;
         id = data.id;
         await sb.from("hospedagens").insert({ festival_id: id });
       }
@@ -95,11 +100,18 @@ export function FestivalForm({ festival, dias = [], onCancelar, onSalvo }) {
 
   return (
     <form className="card sharebox" onSubmit={salvar} style={{ marginBottom: 14 }}>
-      <b>{festival ? "Editar festival" : "Novo festival"}</b>
+      <b>{festival ? "Editar evento" : "Novo evento"}</b>
+      <div className="seg" role="group" aria-label="Tipo de evento">
+        {[["festival", "Festival"], ["show", "Show"]].map(([v, n]) => <button type="button" key={v} aria-pressed={f.tipo === v} onClick={() => setF({ ...f, tipo: v })}>{n}</button>)}
+      </div>
       <span className="hint">Só o nome é obrigatório. O resto você preenche quando o organizador decidir, mesmo em cima da hora.</span>
       <div className="row2">
-        <div className="field"><label htmlFor="e-nome">Nome do festival</label><input type="text" id="e-nome" value={f.nome} onChange={set("nome")} placeholder="Ex.: Festival da Canção de Passo Fundo" /></div>
-        <div className="field"><label htmlFor="e-onde">Cidade e datas (se já souber)</label><input type="text" id="e-onde" value={f.cidade_datas} onChange={set("cidade_datas")} placeholder="Ex.: Passo Fundo, RS · novembro" /></div>
+        <div className="field"><label htmlFor="e-nome">{f.tipo === "show" ? "Nome do show ou evento" : "Nome do festival"}</label><input type="text" id="e-nome" value={f.nome} onChange={set("nome")} placeholder="Ex.: Festival da Canção de Passo Fundo" /></div>
+        <div className="field"><label htmlFor="e-onde">Cidade (se já souber)</label><input type="text" id="e-onde" value={f.cidade_datas} onChange={set("cidade_datas")} placeholder="Ex.: Passo Fundo, RS" /></div>
+      </div>
+      <div className="row2">
+        <div className="field"><label htmlFor="e-di">Primeiro dia (se já souber)</label><input type="date" id="e-di" value={f.data_inicio} onChange={set("data_inicio")} /></div>
+        <div className="field"><label htmlFor="e-df">Último dia</label><input type="date" id="e-df" value={f.data_fim} onChange={set("data_fim")} /></div>
       </div>
       <details open={!!festival}>
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>Dias, categorias e outros detalhes (opcional)</summary>
