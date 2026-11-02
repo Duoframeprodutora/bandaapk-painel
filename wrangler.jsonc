@@ -1,0 +1,14 @@
+{
+  // Sistema Banda APK: painel da banda e formulário de inscrição dos candidatos
+  "name": "bandaapk-painel",
+  "compatibility_date": "2025-04-01",
+  "build": { "command": "npm run build" },
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  "routes": [
+    { "pattern": "painel.bandaapk.com.br", "custom_domain": true },
+    { "pattern": "inscricao.bandaapk.com.br", "custom_domain": true }
+  ]
+}

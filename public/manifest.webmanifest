@@ -1,0 +1,9 @@
+{
+  "name": "Sistema Banda APK",
+  "short_name": "Banda APK",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#14182b",
+  "theme_color": "#14182b",
+  "icons": [{ "src": "/icone.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
