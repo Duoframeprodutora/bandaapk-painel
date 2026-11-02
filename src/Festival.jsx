@@ -24,7 +24,7 @@ export default function Festival({ id, aba, perfil }) {
     setFest(f || null);
     const d2 = (ds || []).map((d) => ({ ...d, categorias: (d.categorias || []).sort((a, b) => a.ordem - b.ordem) }));
     setDias(d2); setInsc(is || []);
-    setDiaSel((cur) => cur && d2.some((d) => d.id === cur) ? cur : d2[0]?.id || null);
+    setDiaSel((cur) => cur === "sem" || (cur && d2.some((d) => d.id === cur)) ? cur : d2[0]?.id || "sem");
   }
   useEffect(() => {
     carregar();
@@ -38,8 +38,9 @@ export default function Festival({ id, aba, perfil }) {
   const abas = [["inscricoes", "Inscrições"], ["palco", "Palco"], ["hotel", "Hotel"], ...(gestor ? [["dados", "Dados do festival"]] : [])];
   const catInfo = {};
   dias.forEach((d) => d.categorias.forEach((c) => (catInfo[c.id] = { dia: d, cat: c })));
-  const doDia = insc.filter((i) => catInfo[i.categoria_id]?.dia.id === diaSel);
   const semDia = insc.filter((i) => !catInfo[i.categoria_id]);
+  const doDia = diaSel === "sem" ? semDia : insc.filter((i) => catInfo[i.categoria_id]?.dia.id === diaSel);
+  const todasCats = dias.flatMap((d) => d.categorias.map((c) => ({ id: c.id, nome: d.nome + " · " + c.nome })));
 
   return (
     <section>
@@ -54,17 +55,21 @@ export default function Festival({ id, aba, perfil }) {
         ))}
       </div>
 
-      {(aba === "inscricoes" || aba === "palco") && dias.length > 0 && (
+      {(aba === "inscricoes" || aba === "palco") && (dias.length > 0 || semDia.length > 0) && (
         <div className="daytabs" role="group" aria-label="Dia do festival" style={{ marginBottom: 8 }}>
           {dias.map((d) => (
             <button key={d.id} className="chip-btn" aria-pressed={diaSel === d.id} onClick={() => setDiaSel(d.id)}>
               {d.nome} · {d.categorias.map((c) => c.nome).join(", ")}
             </button>
           ))}
+          {(semDia.length > 0 || !dias.length) && <button className="chip-btn" aria-pressed={diaSel === "sem"} onClick={() => setDiaSel("sem")}>Dia a definir ({semDia.length})</button>}
         </div>
       )}
+      {aba === "inscricoes" && gestor && !dias.length && (
+        <div className="obs" style={{ marginBottom: 10 }}>Os dias e categorias ainda não foram definidos. Os candidatos já podem se inscrever, e quando o organizador decidir você preenche em <b>Dados do festival</b> e coloca cada um no dia certo.</div>
+      )}
 
-      {aba === "inscricoes" && <Inscricoes fest={fest} lista={doDia} semDia={semDia} catInfo={catInfo} dia={dias.find((d) => d.id === diaSel)} gestor={gestor} perfil={perfil} recarregar={carregar} />}
+      {aba === "inscricoes" && <Inscricoes fest={fest} lista={doDia} catInfo={catInfo} todasCats={todasCats} dia={dias.find((d) => d.id === diaSel)} gestor={gestor} perfil={perfil} recarregar={carregar} />}
       {aba === "palco" && <Palco lista={doDia} catInfo={catInfo} />}
       {aba === "hotel" && <Hotel fest={fest} dias={dias} gestor={gestor} />}
       {aba === "dados" && gestor && <Dados fest={fest} dias={dias} recarregar={carregar} />}
@@ -72,7 +77,7 @@ export default function Festival({ id, aba, perfil }) {
   );
 }
 
-function Inscricoes({ fest, lista, semDia, catInfo, dia, gestor, perfil, recarregar }) {
+function Inscricoes({ fest, lista, catInfo, todasCats, dia, gestor, perfil, recarregar }) {
   const link = linkInscricao(fest.slug);
   const c = { pendente: 0, conferida: 0, problema: 0 };
   lista.forEach((i) => c[i.status]++);
@@ -83,6 +88,10 @@ function Inscricoes({ fest, lista, semDia, catInfo, dia, gestor, perfil, recarre
     if (novo === "problema" && !problema) problema = "Conferir com o candidato";
     const { error } = await sb.from("inscricoes").update({ status: novo, problema }).eq("id", i.id);
     if (error) toast(erroLegivel(error)); else recarregar();
+  }
+  async function mudarCategoria(i, cat) {
+    const { error } = await sb.from("inscricoes").update({ categoria_id: cat || null }).eq("id", i.id);
+    if (error) toast(erroLegivel(error)); else { toast("Inscrição movida"); recarregar(); }
   }
   async function salvarProblema(i, texto) {
     await sb.from("inscricoes").update({ problema: texto }).eq("id", i.id);
@@ -107,7 +116,7 @@ function Inscricoes({ fest, lista, semDia, catInfo, dia, gestor, perfil, recarre
     reordenar([...lista].sort((a, b) => pos(a) - pos(b))); toast("Agrupado por categoria");
   }
   function textoLista() {
-    return "*" + fest.nome + "*\n*Ensaio de " + (dia?.nome || "") + "* (" + (dia?.categorias.map((x) => x.nome).join(", ") || "") + ")\n\n" +
+    return "*" + fest.nome + "*\n" + (dia ? "*Ensaio de " + dia.nome + "* (" + dia.categorias.map((x) => x.nome).join(", ") + ")" : "*Inscrições*") + "\n\n" +
       lista.map((i, k) => (k + 1) + ". *" + i.nome + "* · " + i.musica + (i.versao ? " (" + i.versao + ")" : "") + "\n   Tom: *" + i.tom + "* · " + (catInfo[i.categoria_id]?.cat.nome || "") +
         "\n   " + (i.link || "Áudio enviado pelo candidato") + (i.observacao ? "\n   Obs: " + i.observacao.replace(/\n/g, " / ") : "")).join("\n\n");
   }
@@ -140,21 +149,16 @@ function Inscricoes({ fest, lista, semDia, catInfo, dia, gestor, perfil, recarre
       {!lista.length && <div className="card empty">Nenhuma inscrição neste dia ainda.{gestor && " Copie o link acima e mande para o organizador."}</div>}
       <ol className="list">
         {lista.map((i, k) => (
-          <Item key={i.id} i={i} n={k + 1} cat={catInfo[i.categoria_id]?.cat.nome} gestor={gestor}
+          <Item key={i.id} i={i} n={k + 1} cat={catInfo[i.categoria_id]?.cat.nome} gestor={gestor} todasCats={todasCats} onCategoria={(c) => mudarCategoria(i, c)}
             onStatus={() => mudarStatus(i)} onProblema={(t) => salvarProblema(i, t)} onUp={() => mover(i, -1)} onDown={() => mover(i, 1)} onOuvir={() => ouvir(i)} />
         ))}
       </ol>
-      {semDia.length > 0 && <>
-        <h3 style={{ margin: "20px 0 8px" }}>Sem dia definido</h3>
-        <p className="hint">A categoria destas inscrições foi removida. Peça para o candidato corrigir pelo link dele.</p>
-        <ol className="list">{semDia.map((i, k) => <Item key={i.id} i={i} n={k + 1} gestor={false} onOuvir={() => ouvir(i)} />)}</ol>
-      </>}
       {gestor && <p className="hint" style={{ marginTop: 14 }}>Toque no status para marcar a versão como Pendente, Conferida ou Com problema.</p>}
     </>
   );
 }
 
-function Item({ i, n, cat, gestor, onStatus, onProblema, onUp, onDown, onOuvir }) {
+function Item({ i, n, cat, gestor, todasCats = [], onCategoria, onStatus, onProblema, onUp, onDown, onOuvir }) {
   const [prob, setProb] = useState(i.problema);
   useEffect(() => setProb(i.problema), [i.problema]);
   const p = plataforma(i.link);
@@ -175,6 +179,12 @@ function Item({ i, n, cat, gestor, onStatus, onProblema, onUp, onDown, onOuvir }
         {i.status === "problema" && (gestor
           ? <input type="text" className="probtxt" aria-label="Qual é o problema" value={prob} onChange={(e) => setProb(e.target.value)} onBlur={() => prob !== i.problema && onProblema(prob)} style={{ background: "var(--bad-soft)", color: "var(--bad)", border: 0, borderRadius: 6, padding: "6px 8px" }} />
           : i.problema && <div className="obs" style={{ background: "var(--bad-soft)", color: "var(--bad)" }}><b>Problema:</b> {i.problema}</div>)}
+        {gestor && todasCats.length > 0 && (
+          <select value={i.categoria_id || ""} onChange={(e) => onCategoria(e.target.value)} aria-label={"Dia e categoria de " + i.nome} style={{ width: "auto", maxWidth: "100%", padding: "6px 8px", fontSize: 14, marginTop: 4 }}>
+            <option value="">Dia a definir</option>
+            {todasCats.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        )}
         {gestor && i.whatsapp && <div className="hint">WhatsApp: <a href={"https://wa.me/55" + i.whatsapp.replace(/\D/g, "").replace(/^55/, "")} target="_blank" rel="noopener">{i.whatsapp}</a></div>}
       </div>
       <div className="side">

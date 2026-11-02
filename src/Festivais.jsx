@@ -60,7 +60,7 @@ export function FestivalForm({ festival, dias = [], onCancelar, onSalvo }) {
     e.preventDefault(); setErro("");
     const novos = lerDias(diasTxt);
     if (!f.nome.trim()) return setErro("Escreva o nome do festival.");
-    if (!novos.length || novos.some((d) => !d.cats.length)) return setErro("Coloque os dias e as categorias, um dia por linha. Ex.: Quinta: Popular, Gospel");
+    if (novos.some((d) => !d.cats.length)) return setErro("Em cada linha coloque o dia, dois-pontos e as categorias. Ex.: Quinta: Popular, Gospel");
     setBusy(true);
     try {
       let id = festival?.id;
@@ -96,20 +96,27 @@ export function FestivalForm({ festival, dias = [], onCancelar, onSalvo }) {
   return (
     <form className="card sharebox" onSubmit={salvar} style={{ marginBottom: 14 }}>
       <b>{festival ? "Editar festival" : "Novo festival"}</b>
-      <span className="hint">Preencha com o que o organizador passou. Os dias e categorias aparecem para o candidato escolher.</span>
-      <div className="field"><label htmlFor="e-nome">Nome do festival</label><input type="text" id="e-nome" value={f.nome} onChange={set("nome")} /></div>
+      <span className="hint">Só o nome é obrigatório. O resto você preenche quando o organizador decidir, mesmo em cima da hora.</span>
       <div className="row2">
-        <div className="field"><label htmlFor="e-onde">Cidade e datas</label><input type="text" id="e-onde" value={f.cidade_datas} onChange={set("cidade_datas")} placeholder="Ex.: Passo Fundo, RS · 12 a 14/11" /></div>
-        <div className="field"><label htmlFor="e-hora">Horários</label><input type="text" id="e-hora" value={f.horarios} onChange={set("horarios")} placeholder="Ex.: ensaio 8h, show 20h" /></div>
+        <div className="field"><label htmlFor="e-nome">Nome do festival</label><input type="text" id="e-nome" value={f.nome} onChange={set("nome")} placeholder="Ex.: Festival da Canção de Passo Fundo" /></div>
+        <div className="field"><label htmlFor="e-onde">Cidade e datas (se já souber)</label><input type="text" id="e-onde" value={f.cidade_datas} onChange={set("cidade_datas")} placeholder="Ex.: Passo Fundo, RS · novembro" /></div>
       </div>
-      <div className="row2">
-        <div className="field"><label htmlFor="e-qtd">Candidatos previstos</label><input type="text" id="e-qtd" value={f.qtd_prevista} onChange={set("qtd_prevista")} placeholder="Ex.: 40" /></div>
-        <div className="field"><label htmlFor="e-prazo">Prazo das inscrições</label><input type="text" id="e-prazo" value={f.prazo} onChange={set("prazo")} placeholder="Ex.: 05/11 às 23h59" /></div>
-      </div>
-      <div className="field"><label htmlFor="e-ajuda">Contato para o candidato pedir ajuda</label><input type="text" id="e-ajuda" value={f.contato_ajuda} onChange={set("contato_ajuda")} placeholder="Ex.: Banda APK (54) 99999-0000" /></div>
-      <div className="field"><label htmlFor="e-dias">Dias e categorias</label>
-        <textarea id="e-dias" value={diasTxt} onChange={(e) => setDiasTxt(e.target.value)} placeholder={"Quinta: Popular, Gospel\nSexta: Sertanejo, Nativista, Composição\nSábado: Final"} style={{ minHeight: 110 }} />
-        <span className="hint">Um dia por linha: Dia: categoria, categoria</span></div>
+      <details open={!!festival}>
+        <summary style={{ cursor: "pointer", fontWeight: 700 }}>Dias, categorias e outros detalhes (opcional)</summary>
+        <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
+          <div className="field"><label htmlFor="e-dias">Dias e categorias</label>
+            <textarea id="e-dias" value={diasTxt} onChange={(e) => setDiasTxt(e.target.value)} placeholder={"Quinta: Popular, Gospel\nSexta: Sertanejo, Nativista, Composição\nSábado: Final"} style={{ minHeight: 100 }} />
+            <span className="hint">Um dia por linha: Dia: categoria, categoria. Enquanto estiver vazio, o candidato se inscreve sem escolher dia e você organiza depois.</span></div>
+          <div className="row2">
+            <div className="field"><label htmlFor="e-hora">Horários</label><input type="text" id="e-hora" value={f.horarios} onChange={set("horarios")} placeholder="Ex.: ensaio 8h, show 20h" /></div>
+            <div className="field"><label htmlFor="e-prazo">Prazo das inscrições</label><input type="text" id="e-prazo" value={f.prazo} onChange={set("prazo")} placeholder="Ex.: 05/11 às 23h59" /></div>
+          </div>
+          <div className="row2">
+            <div className="field"><label htmlFor="e-qtd">Candidatos previstos</label><input type="text" id="e-qtd" value={f.qtd_prevista} onChange={set("qtd_prevista")} placeholder="Ex.: 40" /></div>
+            <div className="field"><label htmlFor="e-ajuda">Contato para o candidato pedir ajuda</label><input type="text" id="e-ajuda" value={f.contato_ajuda} onChange={set("contato_ajuda")} placeholder="Ex.: Banda APK (54) 99999-0000" /></div>
+          </div>
+        </div>
+      </details>
       {erro && <div className="err">{erro}</div>}
       <div className="toolbar" style={{ margin: 0 }}>
         <button className="primary" disabled={busy}>{busy ? "Salvando…" : "Salvar festival"}</button>

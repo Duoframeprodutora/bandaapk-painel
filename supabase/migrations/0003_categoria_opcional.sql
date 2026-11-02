@@ -1,0 +1,3 @@
+-- Candidato pode se inscrever antes de o organizador definir dias e categorias.
+-- (Mesmo conteúdo aplicado no Supabase como migração "categoria_opcional": enviar_inscricao
+-- só exige categoria quando o festival já tem categorias cadastradas.)

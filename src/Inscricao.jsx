@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { sb, plataforma, erroLegivel, linkInscricao } from "./supabase.js";
 import { copiar } from "./util.js";
 
-const TOTAL = 7;
 
 export default function Inscricao() {
   const partes = location.pathname.split("/").filter(Boolean);
@@ -43,6 +42,8 @@ export default function Inscricao() {
   );
 
   const opcao = fest.opcoes.find((o) => o.categoria_id === d.categoria_id);
+  const PASSOS = fest.opcoes.length ? [1, 2, 3, 4, 5, 6, 7] : [1, 3, 4, 5, 6, 7];
+  const TOTAL = PASSOS.length, pos = PASSOS.indexOf(passo) + 1, ULTIMO = 7;
 
   function erroDoPasso(n) {
     if (n === 1 && !d.nome.trim()) return "Escreva o seu nome para continuar.";
@@ -59,12 +60,12 @@ export default function Inscricao() {
   }
   function avancar(delta) {
     if (delta > 0) { const m = erroDoPasso(passo); if (m) return setErro(m); }
-    setErro(""); setPasso(Math.min(TOTAL, Math.max(1, passo + delta))); window.scrollTo({ top: 0 });
+    setErro(""); setPasso(PASSOS[Math.min(TOTAL - 1, Math.max(0, pos - 1 + delta))]); window.scrollTo({ top: 0 });
   }
 
   async function enviar(e) {
     e.preventDefault();
-    if (passo < TOTAL) return avancar(1);
+    if (passo < ULTIMO) return avancar(1);
     if (!confirmou) return setErro("Marque o quadradinho confirmando que esta é a versão que você vai cantar.");
     setEnviando(true); setErro("");
     try {
@@ -76,7 +77,7 @@ export default function Inscricao() {
         if (up.error) throw new Error("Não foi possível enviar o áudio. Confira se é um arquivo de áudio com até 30 MB.");
       }
       const { data, error } = await sb.rpc("enviar_inscricao", {
-        p_slug: slug, p_categoria: d.categoria_id, p_nome: d.nome, p_whatsapp: d.whatsapp, p_musica: d.musica,
+        p_slug: slug, p_categoria: d.categoria_id || null, p_nome: d.nome, p_whatsapp: d.whatsapp, p_musica: d.musica,
         p_versao: d.versao, p_tom: d.tom, p_link: fonte === "link" ? d.link : "", p_audio_path: audio_path,
         p_observacao: d.observacao, p_link_edicao: d.link_edicao, p_token: token || null,
       });
@@ -90,7 +91,7 @@ export default function Inscricao() {
     <Moldura fest={fest}>
       <div className="card done">
         <h2>{token ? "Inscrição atualizada" : "Inscrição recebida"}</h2>
-        <p><b>{d.nome}</b>, sua música <b>{d.musica}</b> ({d.versao}, tom {d.tom}) está registrada para {opcao?.dia} · {opcao?.categoria}.</p>
+        <p><b>{d.nome}</b>, sua música <b>{d.musica}</b> ({d.versao}, tom {d.tom}) está registrada{opcao ? " para " + opcao.dia + " · " + opcao.categoria : ""}.</p>
         <p className="hint">Se precisar corrigir alguma coisa até o prazo, use este link. Guarde ele:</p>
         <code>{pronto}</code>
         <button className="primary big" onClick={() => copiar(pronto, "Link copiado")}>Copiar meu link</button>
@@ -102,7 +103,7 @@ export default function Inscricao() {
     <Moldura fest={fest}>
       <form className="card form-cand" id="form" onSubmit={enviar} noValidate style={{ padding: 18, display: "grid", gap: 18 }}>
         {token && <div className="obs" style={{ background: "var(--tone-soft)" }}>Você está corrigindo a sua inscrição.</div>}
-        <div className="prog"><div className="prog-txt">Passo {passo} de {TOTAL}</div><div className="prog-bar"><span style={{ width: Math.round(passo / TOTAL * 100) + "%" }} /></div></div>
+        <div className="prog"><div className="prog-txt">Passo {pos} de {TOTAL}</div><div className="prog-bar"><span style={{ width: Math.round(pos / TOTAL * 100) + "%" }} /></div></div>
 
         {passo === 1 && <div className="step">
           <label className="q" htmlFor="f-nome">Qual é o seu nome?</label>
@@ -168,7 +169,7 @@ export default function Inscricao() {
         {passo === 7 && <div className="step">
           <span className="q">Confira se está tudo certo</span>
           <dl className="review">
-            {[["Nome", d.nome], ["WhatsApp", d.whatsapp], ["Dia", opcao ? opcao.dia + " · " + opcao.categoria : ""], ["Música", d.musica], ["Versão", d.versao], ["Tom", d.tom],
+            {[["Nome", d.nome], ["WhatsApp", d.whatsapp], ...(opcao ? [["Dia", opcao.dia + " · " + opcao.categoria]] : []), ["Música", d.musica], ["Versão", d.versao], ["Tom", d.tom],
               ["Música enviada", fonte === "link" ? d.link : (arquivo ? arquivo.name : "Áudio já enviado")], ["Avisos", d.observacao || "Nenhum"]].map(([k, v]) => (
               <React.Fragment key={k}><dt>{k}</dt><dd>{v}</dd></React.Fragment>
             ))}
@@ -182,7 +183,7 @@ export default function Inscricao() {
         {erro && <div className="err" role="alert">{erro}</div>}
         <div className="stepnav">
           <button className="ghost big" type="button" onClick={() => avancar(-1)} style={{ visibility: passo === 1 ? "hidden" : "visible" }}>Voltar</button>
-          {passo < TOTAL
+          {passo < ULTIMO
             ? <button className="primary big" type="button" onClick={() => avancar(1)}>Continuar</button>
             : <button className="primary big" type="submit" disabled={enviando}>{enviando ? "Enviando…" : token ? "Salvar correção" : "Enviar inscrição"}</button>}
         </div>
